@@ -34,7 +34,7 @@ if [ ! -n "$BASH" ] ;then
 	exit 127
 fi
 
-VERSION="0.6.5.1-dev"											# -beta, -hotfix or -dev suffixes possible
+VERSION="0.6.5.2-dev"											# -beta, -hotfix or -dev suffixes possible
 VERSION_SCRIPT_CONFIG="0.1.4"									# required config version for script
 
 VERSION_VARNAME="VERSION"										# has to match above var names
@@ -61,11 +61,11 @@ IS_HOTFIX=$(( ! $(grep -iq hotfix <<< "$VERSION"; echo $?) ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2020-05-31 20:34:39 +0200$"
+GIT_DATE="$Date: 2020-09-06 17:44:35 +0200$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 7f28406$"
+GIT_COMMIT="$Sha1: 4591f0f$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -556,8 +556,8 @@ MSG_RESTORE_OK=76
 MSG_EN[$MSG_RESTORE_OK]="RBK0076I: Restore finished successfully."
 MSG_DE[$MSG_RESTORE_OK]="RBK0076I: Restore erfolgreich beendet."
 MSG_RESTORE_FAILED=77
-MSG_EN[$MSG_RESTORE_FAILED]="RBK0077E: Restore failed with RC %s. Check previous error messages."
-MSG_DE[$MSG_RESTORE_FAILED]="RBK0077E: Restore wurde fehlerhaft mit RC %s beendet. Siehe vorhergehende Fehlermeldungen."
+MSG_EN[$MSG_RESTORE_FAILED]="RBK0077E: Restore failed. Check previous error messages."
+MSG_DE[$MSG_RESTORE_FAILED]="RBK0077E: Restore wurde fehlerhaft beendet. Siehe vorhergehende Fehlermeldungen."
 MSG_BACKUP_TIME=78
 MSG_EN[$MSG_BACKUP_TIME]="RBK0078I: Backup time: %s:%s:%s."
 MSG_DE[$MSG_BACKUP_TIME]="RBK0078I: Backupzeit: %s:%s:%s."
@@ -646,8 +646,8 @@ MSG_DEPLOYMENT_FAILED=106
 MSG_EN[$MSG_DEPLOYMENT_FAILED]="RBK0106E: Installation of $MYNAME failed on server %s for user %s."
 MSG_DE[$MSG_DEPLOYMENT_FAILED]="RBK0106E: Installation von $MYNAME auf Server %s für Benutzer %s fehlgeschlagen."
 MSG_EXTENSION_FAILED=107
-MSG_EN[$MSG_EXTENSION_FAILED]="RBK0107E: Extension %s failed with RC %s."
-MSG_DE[$MSG_EXTENSION_FAILED]="RBK0107E: Erweiterung %s fehlerhaft beendet mit RC %s."
+MSG_EN[$MSG_EXTENSION_FAILED]="RBK0107W: Extension %s failed with RC %s."
+MSG_DE[$MSG_EXTENSION_FAILED]="RBK0107W: Erweiterung %s fehlerhaft beendet mit RC %s."
 MSG_SKIPPING_UNFORMATTED_PARTITION=108
 MSG_EN[$MSG_SKIPPING_UNFORMATTED_PARTITION]="RBK0108W: Unformatted partition %s (%s) not saved."
 MSG_DE[$MSG_SKIPPING_UNFORMATTED_PARTITION]="RBK0108W: Unformatierte Partition %s (%s) wird nicht gesichert."
@@ -712,8 +712,8 @@ MSG_USING_LOGFILE=128
 MSG_EN[$MSG_USING_LOGFILE]="RBK0128I: Using logfile %s."
 MSG_DE[$MSG_USING_LOGFILE]="RBK0128I: Logdatei ist %s."
 MSG_EMAIL_EXTENSION_NOT_FOUND=129
-MSG_EN[$MSG_EMAIL_EXTENSION_NOT_FOUND]="RBK0129E: email extension %s not found."
-MSG_DE[$MSG_EMAIL_EXTENSION_NOT_FOUND]="RBK0129E: Email Erweiterung %s nicht gefunden."
+MSG_EN[$MSG_EMAIL_EXTENSION_NOT_FOUND]="RBK0129W: email extension %s not found."
+MSG_DE[$MSG_EMAIL_EXTENSION_NOT_FOUND]="RBK0129W: Email Erweiterung %s nicht gefunden."
 MSG_MISSING_FILEPARAMETER=130
 MSG_EN[$MSG_MISSING_FILEPARAMETER]="RBK0130E: Missing backup- or restorepath parameter."
 MSG_DE[$MSG_MISSING_FILEPARAMETER]="RBK0130E: Backup- oder Restorepfadparameter fehlt."
@@ -1104,6 +1104,12 @@ MSG_DE[$MSG_SENSITIVE_SEPARATOR]="+=============================================
 MSG_SENSITIVE_WARNING=255
 MSG_EN[$MSG_SENSITIVE_WARNING]="| ===> A lot of sensitive information is masqueraded in this log file. Nevertheless please check the log carefully before you distribute it <=== |"
 MSG_DE[$MSG_SENSITIVE_WARNING]="| ===>  Viele sensitive Informationen werden in dieser Logdatei maskiert. Vor dem Verteilen des Logs sollte es trotzdem ueberprueft werden  <=== |"
+MSG_RESTORE_WARNING=256
+MSG_EN[$MSG_RESTORE_WARNING]="RBK0256W: Restore finished with warnings. Check previous warning messages for details."
+MSG_DE[$MSG_RESTORE_WARNING]="RBK0256W: Restore endete mit Warnungen. Siehe vorhergehende Warnmeldungen."
+MSG_DEPRECATED_OPTION=257
+MSG_EN[$MSG_DEPRECATED_OPTION]="RBK0257W: Option %s is deprecated and will be removed in a future release."
+MSG_DE[$MSG_DEPRECATED_OPTION]="RBK0257W: Option %s ist veraltet und wird in einer zukünftigen Release entfernt werden."
 
 declare -A MSG_HEADER=( ['I']="---" ['W']="!!!" ['E']="???" )
 
@@ -1198,11 +1204,9 @@ function callExtensions() { # extensionplugpoint rc
 			logItem "Extension RC: $rc"
 			if [[ $rc != 0 ]]; then
 				writeToConsole $MSG_LEVEL_MINIMAL $MSG_EXTENSION_FAILED "$extensionFileName" "$rc"
-				exitError $RC_EXTENSION_ERROR
 			fi
 		else
 			writeToConsole $MSG_LEVEL_MINIMAL $MSG_EMAIL_EXTENSION_NOT_FOUND "$extensionFileName"
-			exitError $RC_EXTENSION_ERROR
 		fi
 	else
 
@@ -1217,7 +1221,6 @@ function callExtensions() { # extensionplugpoint rc
 				logItem "Extension RC: $rc"
 				if [[ $rc != 0 ]]; then
 					writeToConsole $MSG_LEVEL_MINIMAL $MSG_EXTENSION_FAILED "$extensionFileName" "$rc"
-					exitError $RC_EXTENSION_ERROR
 				fi
 			else
 				logItem "$extensionFileName not found - skipping"
@@ -3014,7 +3017,7 @@ function sendEMail() { # content subject
 				if [[ "$EMAIL_COLORING" == "$EMAIL_COLORING_SUBJECT" ]]; then
 					contentType="${NL}MIME-Version: 1.0${NL}Content-Type: text/html; charset=utf-8"
 				elif [[ "$EMAIL_COLORING" == "$EMAIL_COLORING_OPTION" ]]; then
-					coloringOption=(-a "Content-Type: text/html")
+					coloringOption='-a "Content-Type: text/html"'
 				else
 					assertionFailed $LINENO "Unexpected email coloring $EMAIL_COLORING"
 				fi
@@ -3052,7 +3055,7 @@ function sendEMail() { # content subject
 			case $EMAIL_PROGRAM in
 				$EMAIL_MAILX_PROGRAM)
 					logItem "$EMAIL_PROGRAM" "${coloringOption[@]}" $EMAIL_PARMS -s "\"$subject\"" $attach $EMAIL <<< "\"$content\""
-					"$EMAIL_PROGRAM" "${coloringOption[@]}" $EMAIL_PARMS -s "$subject" $attach "$EMAIL" <<< "$content"
+					"$EMAIL_PROGRAM" ${coloringOption[@]} $EMAIL_PARMS -s "$subject" $attach "$EMAIL" <<< "$content"
 					rc=$?
 					logItem "$EMAIL_PROGRAM: RC: $rc"
 					;;
@@ -3307,6 +3310,14 @@ function cleanup() { # trap
 
 	logEntry
 
+	rc=${rc:-42}	# some failure during startup of script (RT error, option validation, ...)
+
+	if (( $rc != 0 && ! $RESTORE )); then	# following stuff was skipped if an error happens during backup
+		callExtensions $POST_BACKUP_EXTENSION $rc
+		startServices
+		executeAfterStartServices
+	fi
+
 	if [[ $1 == "SIGINT" ]]; then
 		# ignore CTRL-C now
 		trap '' SIGINT SIGTERM EXIT
@@ -3315,8 +3326,6 @@ function cleanup() { # trap
 	fi
 
 	writeToConsole $MSG_LEVEL_MINIMAL $MSG_CLEANING_UP
-
-	rc=${rc:-42}	# some failure during startup of script (RT error, option validation, ...)
 
 	CLEANUP_RC=$rc
 
@@ -3342,12 +3351,21 @@ function cleanup() { # trap
 
 		if (( ! $MAIL_ON_ERROR_ONLY )); then
 			if (( $WARNING_MESSAGE_WRITTEN )); then
-				writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_WARNING
+				if (( $RESTORE )); then
+					writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_WARNING
+				else
+					writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_WARNING
+				fi
 			fi
 		fi
 
 		if (( $rc != $RC_CTRLC )); then
-			writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_FAILED
+			if (( $RESTORE )); then
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_FAILED
+			else
+				writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_FAILED
+			fi
+
 			if (( $rc != $RC_EMAILPROG_ERROR )); then
 				msgTitle=$(getLocalizedMessage $MSG_TITLE_ERROR $HOSTNAME)
 				sendEMail "$msg" "$msgTitle"
@@ -3364,7 +3382,11 @@ function cleanup() { # trap
 
 	else 	# success
 
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_OK
+		if (( $RESTORE )); then
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_OK
+		else
+			writeToConsole $MSG_LEVEL_MINIMAL $MSG_BACKUP_OK
+		fi
 
 		if [[ -n "$TELEGRAM_TOKEN"  ]]; then
 			msg=$(getLocalizedMessage $MSG_TITLE_OK $HOSTNAME)
@@ -3413,12 +3435,6 @@ function cleanupRestore() { # trap
 	if (( ! $PARTITIONBASED_BACKUP )); then
 		umount $BOOT_PARTITION &>>"$LOG_FILE"
 		umount $ROOT_PARTITION &>>"$LOG_FILE"
-	fi
-
-	if (( rc != 0 )); then
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_FAILED $rc
-	else
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_OK
 	fi
 
 	logExit "$rc"
@@ -5056,7 +5072,7 @@ function checksForPartitionBasedBackup() {
 		for ((i=0;i<${#pn[@]};i+=2)); do
 			local p=${pn[i]}
 			local d=${pn[$((i+1))]}
-			if [[ $d =~ /dev/sd ]]; then
+			if [[ $d =~ /dev/sd && ! $BOOT_DEVICENAME =~ /dev/sd  ]]; then # allow -P for USB boot (all partitions are external but write error of SD card is used
 				writeToConsole $MSG_LEVEL_MINIMAL $MSG_EXTERNAL_PARTITION_NOT_SAVED "$p" "$d"
 				error=1
 			fi
@@ -5074,6 +5090,11 @@ function checksForPartitionBasedBackup() {
 function commonChecks() {
 
 	logEntry
+
+	if hasSpaces "$CUSTOM_CONFIG_FILE"; then
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$CUSTOM_CONFIG_FILE"
+		exitError $RC_MISC_ERROR
+	fi
 
 	if [[ -n "$EMAIL" ]]; then
 		if [[ ! $EMAIL_PROGRAM =~ $SUPPORTED_EMAIL_PROGRAM_REGEX ]]; then
@@ -5361,6 +5382,11 @@ function doitBackup() {
 	inspect4Backup
 
 	commonChecks
+
+	if hasSpaces "$BACKUPPATH"; then
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$BACKUPPATH"
+		exitError $RC_MISC_ERROR
+	fi
 
 	if [[ ! -d "$BACKUPPATH" ]]; then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_DIR_TO_BACKUP_DOESNOTEXIST "$BACKUPPATH"
@@ -5705,7 +5731,7 @@ function restoreNonPartitionBasedBackup() {
 		exitError $RC_PARAMETER_ERROR
 	fi
 
-	if [[ $RESTORE_DEVICE =~ /dev/mmcblk0 || $RESTORE_DEVICE =~ "/dev/loop" ]]; then
+	if [[ $RESTORE_DEVICE =~ /dev/mmcblk[0-9] || $RESTORE_DEVICE =~ "/dev/loop" ]]; then
 		BOOT_PARTITION="${RESTORE_DEVICE}p1"
 	else
 		BOOT_PARTITION="${RESTORE_DEVICE}1"
@@ -5714,7 +5740,7 @@ function restoreNonPartitionBasedBackup() {
 
 	ROOT_PARTITION_DEFINED=1
 	if [[ -z $ROOT_PARTITION ]]; then
-		if [[ $RESTORE_DEVICE =~ /dev/mmcblk0 || $RESTORE_DEVICE =~ "/dev/loop" ]]; then
+		if [[ $RESTORE_DEVICE =~ /dev/mmcblk[0-9] || $RESTORE_DEVICE =~ "/dev/loop" ]]; then
 			ROOT_PARTITION="${RESTORE_DEVICE}p2"
 		else
 			ROOT_PARTITION="${RESTORE_DEVICE}2"
@@ -6271,6 +6297,11 @@ function doitRestore() {
 
 	commonChecks
 
+	if hasSpaces "$RESTOREFILE"; then
+		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$RESTOREFILE"
+		exitError $RC_MISC_ERROR
+	fi
+
 	if [[ ! -d "$RESTOREFILE" ]]; then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_RESTORE_DIRECTORY_NO_DIRECTORY "$RESTOREFILE"
 		exitError $RC_MISSING_FILES
@@ -6388,22 +6419,22 @@ function doitRestore() {
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_SKIP_SFDISK "$RESTORE_DEVICE"
 	fi
 
-	if [[ "$BACKUPTYPE" == "$BACKUPTYPE_DD" ]]; then
-		local sdSize="$(fdisk -l "$RESTORE_DEVICE" | grep "Disk.*${RESTORE_DEVICE}" | cut -d ' ' -f 5)"
-		local imgSize="$(stat -c "%s" "$ROOT_RESTOREFILE")"
-		if [[ $sdSize < $imgSize ]]; then
-			writeToConsole $MSG_LEVEL_MINIMAL $MSG_SD_TOO_SMALL "$RESTORE_DEVICE" "$sdSize" "$imgSize"
-			exitError $RC_RESTORE_FAILED
-		fi
-	elif [[ "$BACKUPTYPE" == "$BACKUPTYPE_DDZ" ]]; then
-		local c
-		read c sdSize r < <(gzip -l "$RESTOREFILE" | tail -n 1)
-		imgSize="$(stat -c "%s" "$ROOT_RESTOREFILE")"
-		if [[ $sdSize < $imgSize ]]; then
-			writeToConsole $MSG_LEVEL_MINIMAL $MSG_SD_TOO_SMALL "$RESTORE_DEVICE" "$sdSize" "$imgSize"
-			exitError $RC_RESTORE_FAILED
-		fi
-	fi
+	#if [[ "$BACKUPTYPE" == "$BACKUPTYPE_DD" ]]; then
+	#	local sdSize="$(fdisk -l "$RESTORE_DEVICE" | grep "Disk.*${RESTORE_DEVICE}" | cut -d ' ' -f 5)"
+	#	local imgSize="$(stat -c "%s" "$ROOT_RESTOREFILE")"
+	#	if [[ $sdSize < $imgSize ]]; then
+	#		writeToConsole $MSG_LEVEL_MINIMAL $MSG_SD_TOO_SMALL "$RESTORE_DEVICE" "$sdSize" "$imgSize"
+	#		exitError $RC_RESTORE_FAILED
+	#	fi
+	#elif [[ "$BACKUPTYPE" == "$BACKUPTYPE_DDZ" ]]; then
+	#	local c
+	#	read c sdSize r < <(gzip -l "$RESTOREFILE" | tail -n 1)
+	#	imgSize="$(stat -c "%s" "$ROOT_RESTOREFILE")"
+	#	if [[ $sdSize < $imgSize ]]; then
+	#		writeToConsole $MSG_LEVEL_MINIMAL $MSG_SD_TOO_SMALL "$RESTORE_DEVICE" "$sdSize" "$imgSize"
+	#		exitError $RC_RESTORE_FAILED
+	#	fi
+	#fi
 
 	# adjust partition for tar and rsync backup in normal mode
 
@@ -7254,6 +7285,7 @@ while (( "$#" )); do
 
 	-A|-A[-+])
 	  APPEND_LOG=$(getEnableDisableOption "$1"); shift 1
+	  writeToConsole $MSG_LEVEL_MINIMAL $MSG_DEPRECATED_OPTION "-A"
 	  ;;
 
 	-b)
@@ -7314,10 +7346,6 @@ while (( "$#" )); do
 	  o=$(checkOptionParameter "$1" "$2")
 	  (( $? )) && exitError $RC_PARAMETER_ERROR
 	  CUSTOM_CONFIG_FILE="$o"; shift 2
-	  if hasSpaces "$CUSTOM_CONFIG_FILE"; then
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$CUSTOM_CONFIG_FILE"
-		exitError $RC_MISC_ERROR
-	  fi
 	  if [[ ! -f "$CUSTOM_CONFIG_FILE" ]]; then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$CUSTOM_CONFIG_FILE"
 		exitError $RC_MISSING_FILES
@@ -7450,10 +7478,6 @@ while (( "$#" )); do
 	  o=$(checkOptionParameter "$1" "$2")
 	  (( $? )) && exitError $RC_PARAMETER_ERROR
 	  BACKUPPATH="$o"; shift 2
-	  if hasSpaces "$BACKUPPATH"; then
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$BACKUPPATH"
-		exitError $RC_MISC_ERROR
-	  fi
 	  if [[ ! -d "$BACKUPPATH" ]]; then
 		  writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$BACKUPPATH"
 		  exitError $RC_MISSING_FILES
@@ -7469,10 +7493,6 @@ while (( "$#" )); do
 	  o=$(checkOptionParameter "$1" "$2")
 	  (( $? )) && exitError $RC_PARAMETER_ERROR
 	  RESTOREFILE="$o"; shift 2
-	  if hasSpaces "$RESTOREFILE"; then
-		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_CONTAINS_SPACES "$RESTOREFILE"
-		exitError $RC_MISC_ERROR
-	  fi
 	  if [[ ! -d "$RESTOREFILE" && ! -f "$RESTOREFILE" ]]; then
 		writeToConsole $MSG_LEVEL_MINIMAL $MSG_FILE_ARG_NOT_FOUND "$RESTOREFILE"
 		exitError $RC_MISSING_FILES
