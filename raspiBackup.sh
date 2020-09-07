@@ -61,11 +61,11 @@ IS_HOTFIX=$(( ! $(grep -iq hotfix <<< "$VERSION"; echo $?) ))
 MYSELF=${0##*/}
 MYNAME=${MYSELF%.*}
 
-GIT_DATE="$Date: 2020-09-06 17:44:35 +0200$"
+GIT_DATE="$Date: 2020-09-07 19:10:35 +0200$"
 GIT_DATE_ONLY=${GIT_DATE/: /}
 GIT_DATE_ONLY=$(cut -f 2 -d ' ' <<< $GIT_DATE)
 GIT_TIME_ONLY=$(cut -f 3 -d ' ' <<< $GIT_DATE)
-GIT_COMMIT="$Sha1: 4591f0f$"
+GIT_COMMIT="$Sha1: 819c9d2$"
 GIT_COMMIT_ONLY=$(cut -f 2 -d ' ' <<< $GIT_COMMIT | sed 's/\$//')
 
 GIT_CODEVERSION="$MYSELF $VERSION, $GIT_DATE_ONLY/$GIT_TIME_ONLY - $GIT_COMMIT_ONLY"
@@ -3312,12 +3312,6 @@ function cleanup() { # trap
 
 	rc=${rc:-42}	# some failure during startup of script (RT error, option validation, ...)
 
-	if (( $rc != 0 && ! $RESTORE )); then	# following stuff was skipped if an error happens during backup
-		callExtensions $POST_BACKUP_EXTENSION $rc
-		startServices
-		executeAfterStartServices
-	fi
-
 	if [[ $1 == "SIGINT" ]]; then
 		# ignore CTRL-C now
 		trap '' SIGINT SIGTERM EXIT
@@ -3574,16 +3568,10 @@ function cleanupBackup() { # trap
 		umountSDPartitions "$TEMPORARY_MOUNTPOINT_ROOT"
 	fi
 
-	if (( $rc != 0 )); then
+	callExtensions $POST_BACKUP_EXTENSION $rc
 
-		echo "Invocation parms: '$INVOCATIONPARMS'" >> "$LOG_FILE"
-
-		if (( $rc == $RC_STOP_SERVICES_ERROR )) || (( $STOPPED_SERVICES )) || (( $BEFORE_STOPPED_SERVICES )); then
-			startServices "noexit"
-			executeAfterStartServices "noexit"
-		fi
-
-	fi
+	startServices "noexit"
+	executeAfterStartServices "noexit"
 
 	cleanupBackupDirectory
 
@@ -4743,10 +4731,6 @@ function backup() {
 	if [[ -z $BACKUPPATH || "$BACKUPPATH" == *"*"* ]]; then
 		assertionFailed $LINENO "Unexpected backup path $BACKUPPATH"
 	fi
-
-	callExtensions $POST_BACKUP_EXTENSION $rc
-	startServices
-	executeAfterStartServices
 
 	if [[ $rc -eq 0 ]]; then
 		applyBackupStrategy
